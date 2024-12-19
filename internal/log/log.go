@@ -155,6 +155,7 @@ func (l *Log) Truncate(lowest uint64) error {
 	return nil
 }
 
+// Provides a reader for the entire log.
 func (l *Log) Reader() io.Reader {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
