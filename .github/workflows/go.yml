@@ -1,0 +1,57 @@
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23.1'
+        cache: true
+        
+    - name: Install Protoc
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
+        
+    - name: Install dependencies
+      run: |
+        go mod download
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate Proto files
+      run: make compile
+
+    - name: Verify Generated Proto files
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "Generated proto files are not up to date. Please run 'make compile' and commit the changes."
+          exit 1
+        fi
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+
+    - name: Test
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.txt
+        fail_ci_if_error: false
+
+    - name: Build
+      run: go build -v ./... 
